@@ -18,6 +18,8 @@
     "prepack": "cp ../README.md README.md"
   },
   "dependencies": {
+    "@chatscope/chat-ui-kit-react": "^1.10.1",
+    "@chatscope/chat-ui-kit-styles": "^1.4.0",
     "@tableau/extensions-api-types": "^1.9.0",
     "@tableau/tableau-ui": "^3.7.0",
     "@testing-library/jest-dom": "^5.16.5",
@@ -32,6 +34,7 @@
     "react-dom": "^16.14.0",
     "react-scripts": "^5.0.1",
     "react-toastify": "^9.0.8",
+    "simple-react-modal": "^0.5.1",
     "web-vitals": "^2.1.4",
     "xml2js": "^0.4.23"
   },

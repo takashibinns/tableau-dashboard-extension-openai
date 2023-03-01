@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Radio, Checkbox, TextField, DropdownSelect, TextLink } from '@tableau/tableau-ui';
+import { Button, TextField, DropdownSelect } from '@tableau/tableau-ui';
 import './Config.css';
 import TableauHelper from './TableauHelper';
 
@@ -86,7 +86,7 @@ export class Config extends React.Component {
 
     //  Figure out which worksheet to mark as selected in the dropdown (default to an empty string)
     let selectedWorksheet = '';
-    if (this.state.selectedWorksheet) {
+    if (this.state.defaultWorksheet) {
       //  There is a saved selection, use that
       selectedWorksheet = this.state.selectedWorksheet;
     } else {
@@ -108,22 +108,13 @@ export class Config extends React.Component {
           <span className="tableau-titlebar-label">Configure Extension</span>
           <span className="tableau-titlebar-close-button" onClick={this.closeDialog}>x</span>
         </div>
-        <Radio checked={this.state.radio === 'one'} onChange={updateStateDynamically} name='ordinal' stateprop='radio' value='one'>One</Radio><br/>
-        <Radio checked={this.state.radio === 'two'} onChange={updateStateDynamically} name='ordinal' stateprop='radio' value='two'>Two</Radio><br/>
+        <TextField label="OpenAI API Key" stateprop="openai_key" value={this.state.openai_key} kind='line' onChange={updateStateDynamically} onClear={updateStateDynamically}/>
         <br/>
-        <Checkbox checked={this.state.checkbox} onChange={updateStateDynamically} stateprop='checkbox'>Checkbox</Checkbox><br/>
-        <br/>
-        <TextField label="Text field" stateprop="textField" value={this.state.textField} kind='line' onChange={updateStateDynamically} onClear={updateStateDynamically}/>
+        <TextField label="OpenAI Org ID" stateprop="openai_org_id" value={this.state.openai_org_id} kind='line' onChange={updateStateDynamically} onClear={updateStateDynamically}/>
         <br/>
         <DropdownSelect label='Sheet' kind='line' onChange={updateStateDynamically} stateprop='selectedWorksheet' value={selectedWorksheet}>
            { items }
         </DropdownSelect>
-        <br/>
-        <div>
-          <span>These UI components are from the </span>
-          <TextLink kind='standalone' target='_blank' href='https://tableau.github.io/tableau-ui/'>TableauUI</TextLink> 
-          <span> library</span>
-        </div>
         <br/>
         <div className="tableau-footer">
           <Button kind="outline" key="cancelButton" onClick={this.closeDialog}>Cancel</Button>

@@ -10,9 +10,9 @@ class TableauHelper {
     //  Define the settings model
     static defaultSettings = () => {
         return {
-            radio: 'one',
-            checkbox: false,
-            textField: '',
+            defaultQuestion: '',
+            openai_key: '',
+            openai_org_id: '',
             selectedWorksheet: null
         }
     }
@@ -73,6 +73,20 @@ class TableauHelper {
             console.log(`No worksheet found with name: ${sheetName}`)
             return null;
         }
+    }
+
+    //  Function to format a javascript date as a string
+    static formatDate = (dateObj) => {
+        const options = {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+            second: "numeric",
+            hour12: true
+          };
+        return new Intl.DateTimeFormat('default', options).format(dateObj)
     }
 
 }
