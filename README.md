@@ -40,7 +40,7 @@ This will build all the files needed for the web app, and put them in a folder n
 
 Now that you have your static files, upload them to your S3 bucket and you should be able to access it through a web browser.  Update your trex file to point to your web app in S3.
 
-## Known Issues [TBD]
+## Known Issues
 * Currently, only questions in english have been tested
 * If you've tried [ChatGPT](https://openai.com/blog/chatgpt), you will be accustomed to working within a *session*.  You ask an initial question and then can ask follow ups without losing context.  Since ChatGPT's API is not publically available yet, we are using the [Completion](https://platform.openai.com/docs/api-reference/completions) endpoint instead.  This works pretty well, but it does not have a concept of sessions or history.  This means we have to pass the summary data from the sheet with each API call.  
 * Data volumes: OpenAI's public API only allows prompts of a certain size.  This extension uses the `text-davinci-003` model, which allows up to 4000 [tokens](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them).  This means the summary data we send to OpenAI must be relatively small in size.  The maximum # rows will vary, depending on number of columns and how much long text is within each column.
@@ -56,3 +56,10 @@ https://chatscope.io/storybook/react/?path=/story/documentation-introduction--pa
 ### Simple React Modal
 The sheet selector button opens a modal window with a list of sheets.  Clicking on a sheet resets the chat, and passes in the data from that sheet to OpenAI's API.  More information on how to use the modal window can be found here:
 https://www.npmjs.com/package/simple-react-modal
+
+### Tableau Dashboard Extension
+This project creates a Tableau Dashboard Extension, which allows web apps to run within the context of a Tableau dashboard.  More information about building dashboard extensions for Tableau can be found here:
+https://tableau.github.io/extensions-api/
+### create-tableau-dashboard-extension
+If you are wondering why the directory structure has a folder named `create-tableau-dashboard-extension`, it's because this web app was built using an npx command.  This one command builds the scaffolding for a tableau dashboard extension, making it much faster to develop the extension.  More info can be found here:
+https://github.com/takashibinns/create-tableau-dashboard-extension
