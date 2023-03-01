@@ -5,19 +5,105 @@ import { MainContainer, ChatContainer, MessageList, Message, MessageInput, Avata
 import styles from '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
 import Modal from 'simple-react-modal'
 import TableauHelper from './TableauHelper';
+import './DashboardExtension.css';
 
 //  Preview linting errors
 /* global tableau */
 
-//  OpenAI variables
+//  OpenAI constants
 const openai_defaults = {
   prompt: 'i want you to be an analyst and look at this data set to help me understand areas which need improvement. Also suggest to me quick win strategies for those areas',
   logo: '/assets/openai.png',
   name: 'OpenAI',
   fullname: 'ChatGPT Advisor for Tableau',
-  info: 'https://openai.com/blog/chatgpt'
+  info: 'Powered by OpenAI',
+  infoLink: 'https://platform.openai.com/docs/introduction',
+  disclaimer: 'By using this tool, you are interacting with an AI system.  This chatbox is simulating the experience of talking to your data',
+  moderationViolation: "Sorry, I can't accept your question because it was flagged as a Moderation violation for the following categories"
 }
-const tableau_icon = '/assets/tableau.png'
+//  Tableay constants
+const tableau_defaults = {
+  icon: '/assets/tableau.png',
+  userMessageClassname: 'tableau-message-user',
+  goodMessageClassname: 'tableau-message-good',
+  badMessageClassname: 'tableau-message-bad',
+  inputMessageClassname: 'tableau-inputbar'
+}
+
+//  Use the moderation endpoint, to check the prompt for inappropriate content
+const getOpenAImoderation = async (openai_key, openai_org_id, prompt) => {
+
+  //  Define the response structure
+  let response = {
+    message: '',
+    flagged: true,
+    error: null
+  }
+
+  //  Define the payload to send to OpenAI
+  const payload = {
+    'input': prompt,
+    'model': 'text-moderation-stable'
+  }
+
+  //  Generate headers for the OpenAI API call
+  let headers = {
+    'Authorization': `Bearer ${openai_key}`,
+    'Content-Type': 'application/json'
+  }
+  if (openai_org_id){
+    headers['organization'] = openai_org_id;
+  }
+
+  //  Define the API endpoint
+  const openai_url = 'https://api.openai.com/v1/moderations';
+
+  //  Make the next API call, to OpenAI
+  const config = {
+    'method': 'POST',
+    'headers': headers,
+    'body': JSON.stringify(payload)
+  };
+
+  //  Try to make the API call to OpenAI
+  let openai_response;
+  try {
+    openai_response = await fetch(openai_url, config);
+  } catch (error){
+    console.error(error);
+    response.error = error;
+    response.message = error.message;
+    return response;
+  }
+
+  //  Parse the output from OpenAI, and grab just the text to display
+  const openai_data = JSON.parse(await openai_response.text());
+  if (openai_data.error) {
+    console.error(openai_data.error);
+    response.error = openai_data.error;
+    response.message = openai_data.error.message;
+    return response;
+  } else {
+    //  Get a list of all categories the prompt was flagged for
+    const categories = openai_data.results[0].categories;
+    let flags = [];
+    Object.keys(categories).forEach( key => {
+      if (categories[key]){
+        flags.push(key);
+      }
+    })
+
+    //  Were any categories flagged?
+    if (flags.length>0){
+      response.message = `${openai_defaults.moderationViolation}: ${flags.join(", ")}`;
+    } else {
+      response.flagged = false;
+      response.message = `The provided question is OK to ask.`;
+    }
+
+    return response;
+  }
+}
 
 //  Create the prompt text for OpenAI
 const createOpenAiModel = (message, tableauData) => {
@@ -68,6 +154,12 @@ const createOpenAiModel = (message, tableauData) => {
 //  Make API call to OpenAI
 const getOpenAIdata = async (openai_key, openai_org_id, payload) => {
 
+  //  Define the response object
+  let response = {
+    message: '',
+    error: null
+  }
+
   //  Generate headers for the OpenAI API call
   let headers = {
     'Authorization': `Bearer ${openai_key}`,
@@ -88,25 +180,29 @@ const getOpenAIdata = async (openai_key, openai_org_id, payload) => {
   };
 
   //  Try to make the API call to OpenAI
-  let openai_response, openai_text;
+  let openai_response;
   try {
     openai_response = await fetch(openai_url, config);
   } catch (error){
     console.error(error);
-    return error.message;
+    response.error = error;
+    response.message = error.message;
+    return response;
   }
 
   //  Parse the output from OpenAI, and grab just the text to display
   const openai_data = JSON.parse(await openai_response.text());
   if (openai_data.error) {
     console.error(openai_data.error);
-    openai_text = openai_data.error.message;
+    response.error = openai_data.error;
+    response.message = openai_data.error.message;
+    return response;
   } else {
-    openai_text = openai_data.choices[0].text.trim();
+    response.message = openai_data.choices[0].text.trim();
   }
 
   //  Return the text from OpenAI
-  return openai_text;
+  return response;
 }
 
 export class DashboardExtension extends React.Component {
@@ -207,8 +303,9 @@ export class DashboardExtension extends React.Component {
         position: 'single',
         direction: 'outgoing',
         sender: 'User',
+        className: tableau_defaults.userMessageClassname,
         sentTime: TableauHelper.formatDate(new Date()),
-        message: openai_defaults.prompt,
+        message: settings.defaultQuestion,
       }
 
       //  Update the state to show the loading icon, but trigger the first query to OpenAI
@@ -221,25 +318,45 @@ export class DashboardExtension extends React.Component {
         messages: [message1]
       }, async () => {
 
+        //  Get the list of existing messages
+        let newMessages = this.state.messages.map( message => message);
+
         //  Fetch the raw data from a worksheet
         const rawData = await TableauHelper.getData(settings.selectedWorksheet);
 
-        //  Generate the payload for OpenAI
-        const openai_payload = createOpenAiModel(openai_defaults.prompt, rawData);
+        //  Verify the default question is OK to ask
+        const moderation = await getOpenAImoderation(settings.openai_key, settings.openai_org_id, settings.defaultQuestion);
+        if (moderation.flagged) {
 
-        //  Get the initial message for this worksheet's data
-        const openai_data = await getOpenAIdata(settings.openai_key, settings.openai_org_id, openai_payload);
+          //  Content was flagged by the Moderation API, notify the user
+          newMessages.push({
+            type: 'text',
+            position: 'single',
+            direction: 'incoming',
+            sender: openai_defaults.name,
+            className: tableau_defaults.badMessageClassname,
+            sentTime: TableauHelper.formatDate(new Date()),
+            message: moderation.message
+          });
+        } else {
 
-        //  Create a new message from OpenAI
-        let newMessages = this.state.messages.map( message => message );
-        newMessages.push({
-          type: 'text',
-          position: 'single',
-          direction: 'incoming',
-          sender: openai_defaults.name,
-          sentTime: TableauHelper.formatDate(new Date()),
-          message: openai_data
-        })
+          //  Content is OK, generate the payload for OpenAI
+          const openai_payload = createOpenAiModel(openai_defaults.prompt, rawData);
+
+          //  Get the initial message for this worksheet's data
+          const openai_data = await getOpenAIdata(settings.openai_key, settings.openai_org_id, openai_payload);
+
+          //  Create a new message from OpenAI
+          newMessages.push({
+            type: 'text',
+            position: 'single',
+            direction: 'incoming',
+            sender: openai_defaults.name,
+            className: tableau_defaults.goodMessageClassname,
+            sentTime: TableauHelper.formatDate(new Date()),
+            message: openai_data.message
+          })
+        }
 
         //  Update the state
         thisComponent.setState({
@@ -264,6 +381,7 @@ export class DashboardExtension extends React.Component {
       position: 'single',
       direction: 'outgoing',
       sender: 'User',
+      className: tableau_defaults.userMessageClassname,
       sentTime: TableauHelper.formatDate(new Date()),
       message: newMessage
     })
@@ -274,22 +392,42 @@ export class DashboardExtension extends React.Component {
       messages: newMessages
     }, async () => {
 
-      //  Generate the payload for OpenAI
-      const openai_payload = createOpenAiModel(newMessage, thisComponent.state.dataTable);
+      //  Get the list of existing messages
+      let newMessages = this.state.messages.map( message => message);
 
-      //  Get the initial message for this worksheet's data
-      const openai_data = await getOpenAIdata(thisComponent.state.openai_key, thisComponent.state.openai_org_id, openai_payload);
+      //  Verify the default question is OK to ask
+      const moderation = await getOpenAImoderation(thisComponent.state.openai_key, thisComponent.state.openai_org_id, newMessage);
+      if (moderation.flagged) {
 
-      //  Create a new message from OpenAI
-      let newMessages = this.state.messages.map( message => message );
-      newMessages.push({
-        type: 'text',
-        position: 'single',
-        direction: 'incoming',
-        sender: openai_defaults.name,
-        sentTime: TableauHelper.formatDate(new Date()),
-        message: openai_data,
-      })
+        //  Content was flagged by the Moderation API, notify the user
+        newMessages.push({
+          type: 'text',
+          position: 'single',
+          direction: 'incoming',
+          sender: openai_defaults.name,
+          className: tableau_defaults.badMessageClassname,
+          sentTime: TableauHelper.formatDate(new Date()),
+          message: moderation.message
+        });
+      } else {
+
+        //  Content is OK, generate the payload for OpenAI
+        const openai_payload = createOpenAiModel(newMessage, thisComponent.state.dataTable);
+
+        //  Get the initial message for this worksheet's data
+        const openai_data = await getOpenAIdata(thisComponent.state.openai_key, thisComponent.state.openai_org_id, openai_payload);
+
+        //  Create a new message from OpenAI
+        newMessages.push({
+          type: 'text',
+          position: 'single',
+          direction: 'incoming',
+          sender: openai_defaults.name,
+          className: tableau_defaults.goodMessageClassname,
+          sentTime: TableauHelper.formatDate(new Date()),
+          message: openai_data.message,
+        })
+      }
 
       //  Update the state
       thisComponent.setState({
@@ -328,7 +466,7 @@ export class DashboardExtension extends React.Component {
         const avatar = hasAvatar ? <Avatar src={openai_defaults.logo} name={message.sender} /> : null;
 
         //  Define the model for each message
-        return  <Message model={message} avatarPosition={hasAvatar ? 'cl' : null} key={`message-${index}`}>
+        return  <Message model={message} avatarPosition={hasAvatar ? 'cl' : null} className={message.className} key={`message-${index}`}>
                   {avatar}
                 </Message>
       });
@@ -345,15 +483,15 @@ export class DashboardExtension extends React.Component {
                         <Avatar src={openai_defaults.logo} name={openai_defaults.name} size="md"/>
                         <ConversationHeader.Content userName={openai_defaults.fullname} info={openai_defaults.info}/>
                         <ConversationHeader.Actions>                           
-                          <Button border onClick={this.openModal} style={{padding:"5px"}}>{this.state.selectedWorksheet}</Button>
-                          <InfoButton title="More info" />
-                          <Avatar src={tableau_icon} name="Tableau" />   
+                          <Button border onClick={this.openModal} style={{padding:"5px"}} >{this.state.selectedWorksheet}</Button>
+                          <InfoButton title={openai_defaults.disclaimer} />
+                          <Avatar src={tableau_defaults.icon} name="Tableau" />   
                         </ConversationHeader.Actions>
                       </ConversationHeader>
                       <MessageList typingIndicator={dotDotDot}>
                           { messages }
                       </MessageList>
-                      <MessageInput attachButton={false} disabled={inputDisabled} onSend={this.handleNewMessage} placeholder="Ask a question here" />        
+                      <MessageInput attachButton={false} disabled={inputDisabled} onSend={this.handleNewMessage} className={tableau_defaults.inputMessageClassname} placeholder="Ask a question here" />        
                     </ChatContainer>
                   </MainContainer>
                   <Modal show={this.state.showModal} onClose={this.closeModal} >

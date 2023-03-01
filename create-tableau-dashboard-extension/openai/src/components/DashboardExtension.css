@@ -1,0 +1,21 @@
+/************************************************/
+/*	CSS for Tableau Extension's main UI 		*/
+/************************************************/
+
+/*	Messages	*/
+.tableau-message-user .cs-message__content {
+	background-color: #c7ebff;
+}
+.tableau-message-bad .cs-message__content {
+	background-color: #ee0700;
+	color: white;
+}
+.tableau-message-good .cs-message__content {
+	background-color: #f3f3f3;
+}
+.tableau-inputbar .cs-message-input__content-editor-wrapper {
+	background-color: #c7ebff;
+}
+.tableau-inputbar .cs-message-input__content-editor {
+	background-color: #c7ebff;
+}

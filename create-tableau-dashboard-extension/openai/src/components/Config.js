@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, TextField, DropdownSelect } from '@tableau/tableau-ui';
+import { Button, TextField, TextArea, DropdownSelect } from '@tableau/tableau-ui';
 import './Config.css';
 import TableauHelper from './TableauHelper';
 
@@ -34,6 +34,12 @@ export class Config extends React.Component {
       newState[key] = this.state[key];
     }
 
+    //  Since the dropdown is populated from an API call, it doesn't have a default value
+    //  This is to ensure a selection, even if the user doesn't explicitly change the dropdown selection
+    if (!newState.selectedWorksheet && this.state.worksheets.length>0){
+      newState.selectedWorksheet = this.state.worksheets[0].name;
+    }
+
     //  Tell Tableau there are new settings for this extension
     TableauHelper.setSettings(newState);
 
@@ -55,11 +61,14 @@ export class Config extends React.Component {
     //  Initialize the popup using tableau extension api
     tableau.extensions.initializeDialogAsync().then( () => {
 
+      //  Get the list of worksheets from Tableau
+      const worksheets = TableauHelper.getWorksheets();
+
       //  Look for any saved settings
       let newState = Object.assign(
         { 
           settingsLoaded: true,
-          worksheets: TableauHelper.getWorksheets()
+          worksheets: worksheets
         },
         TableauHelper.getSettings()
       );
@@ -111,6 +120,8 @@ export class Config extends React.Component {
         <TextField label="OpenAI API Key" stateprop="openai_key" value={this.state.openai_key} kind='line' onChange={updateStateDynamically} onClear={updateStateDynamically}/>
         <br/>
         <TextField label="OpenAI Org ID" stateprop="openai_org_id" value={this.state.openai_org_id} kind='line' onChange={updateStateDynamically} onClear={updateStateDynamically}/>
+        <br/>
+        <TextArea label="Default question to ask" stateprop="defaultQuestion" value={this.state.defaultQuestion} kind='line' onChange={updateStateDynamically} onClear={updateStateDynamically} className="tableau-text-area"/>
         <br/>
         <DropdownSelect label='Sheet' kind='line' onChange={updateStateDynamically} stateprop='selectedWorksheet' value={selectedWorksheet}>
            { items }

@@ -45,6 +45,14 @@ div.container{
 	padding-top:6px;
 }
 
+.tableau-text-area {
+	width: 100%;
+}
+
+.tableau-text-area textarea {
+	height: 10em;
+}
+
 
 /*	Bottom save buttons 	*/
 .tableau-footer {
