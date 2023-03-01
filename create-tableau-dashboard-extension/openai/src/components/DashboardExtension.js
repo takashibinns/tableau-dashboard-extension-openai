@@ -9,11 +9,12 @@ import './DashboardExtension.css';
 
 //  Preview linting errors
 /* global tableau */
+const website_path = process.env.REACT_APP_PATH;
 
 //  OpenAI constants
 const openai_defaults = {
   prompt: 'i want you to be an analyst and look at this data set to help me understand areas which need improvement. Also suggest to me quick win strategies for those areas',
-  logo: '/assets/openai.png',
+  logo: `${website_path}/assets/openai.png`,
   name: 'OpenAI',
   fullname: 'ChatGPT Advisor for Tableau',
   info: 'Powered by OpenAI',
@@ -23,7 +24,7 @@ const openai_defaults = {
 }
 //  Tableay constants
 const tableau_defaults = {
-  icon: '/assets/tableau.png',
+  icon: `${website_path}/assets/tableau.png`,
   userMessageClassname: 'tableau-message-user',
   goodMessageClassname: 'tableau-message-good',
   badMessageClassname: 'tableau-message-bad',
@@ -235,7 +236,7 @@ export class DashboardExtension extends React.Component {
     let thisComponent = this;
     
     //  Determine the config popup's url
-    const url = window.location.origin + "/config.html";
+    const url = `${window.location.origin}${website_path}/config.html`;
     
     //  Initialize the extension's config popup     
     tableau.extensions.ui.displayDialogAsync(url, "", { height: 500, width:400 } ).then((closePayload) => {

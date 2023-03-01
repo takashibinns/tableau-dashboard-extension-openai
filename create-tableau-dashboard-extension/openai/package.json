@@ -13,6 +13,7 @@
     "deploy": "gh-pages -d build",
     "start": "react-app-rewired start",
     "build": "react-app-rewired build",
+    "builds3": "PUBLIC_URL=/openai REACT_APP_PATH=/openai react-app-rewired build",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject",
     "prepack": "cp ../README.md README.md"
