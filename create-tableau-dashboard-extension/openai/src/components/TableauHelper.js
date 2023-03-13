@@ -11,6 +11,7 @@ class TableauHelper {
     static defaultSettings = () => {
         return {
             defaultQuestion: 'i want you to be an analyst and look at this data set to help me understand areas which need improvement. Also suggest to me quick win strategies for those areas',
+            temperature: 0,
             openai_key: '',
             openai_org_id: '',
             selectedWorksheet: null

@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, TextField, TextArea, DropdownSelect } from '@tableau/tableau-ui';
+import { Button, TextField, TextArea, DropdownSelect, Stepper } from '@tableau/tableau-ui';
 import './Config.css';
 import TableauHelper from './TableauHelper';
 
@@ -85,12 +85,16 @@ export class Config extends React.Component {
     //  Get a reference to this component
     let thisComponent = this;
 
-    //  Helper function to figure out which input was changed, and update the appropriate property of this component's state
-    const updateStateDynamically = (e) => {
+    //  Helper functions to figure out which input was changed, and update the appropriate property of this component's state
+    const updateTextState = (e) => {
       const propName = e.target.attributes["stateprop"].value;
       let newStateValue = {};
       newStateValue[propName] = e.target.type==="checkbox" ? e.target.checked : e.target.value;
       thisComponent.setState(newStateValue)
+    }
+    const updateSliderState = (e) => {
+      const newValue = Math.round(e * 10) / 10
+      thisComponent.setState({'temperature':newValue});
     }
 
     //  Figure out which worksheet to mark as selected in the dropdown (default to an empty string)
@@ -117,13 +121,15 @@ export class Config extends React.Component {
           <span className="tableau-titlebar-label">Configure Extension</span>
           <span className="tableau-titlebar-close-button" onClick={this.closeDialog}>x</span>
         </div>
-        <TextField label="OpenAI API Key" stateprop="openai_key" value={this.state.openai_key} kind='line' onChange={updateStateDynamically} onClear={updateStateDynamically}/>
+        <TextField label="OpenAI API Key" stateprop="openai_key" value={this.state.openai_key} kind='line' onChange={updateTextState} onClear={updateTextState}/>
         <br/>
-        <TextField label="OpenAI Org ID" stateprop="openai_org_id" value={this.state.openai_org_id} kind='line' onChange={updateStateDynamically} onClear={updateStateDynamically}/>
+        <TextField label="OpenAI Org ID" stateprop="openai_org_id" value={this.state.openai_org_id} kind='line' onChange={updateTextState} onClear={updateTextState}/>
         <br/>
-        <TextArea label="Default question to ask" stateprop="defaultQuestion" value={this.state.defaultQuestion} kind='line' onChange={updateStateDynamically} onClear={updateStateDynamically} className="tableau-text-area"/>
+        <TextArea label="Default question to ask" stateprop="defaultQuestion" value={this.state.defaultQuestion} kind='line' onChange={updateTextState} onClear={updateTextState} className="tableau-text-area"/>
         <br/>
-        <DropdownSelect label='Sheet' kind='line' onChange={updateStateDynamically} stateprop='selectedWorksheet' value={selectedWorksheet}>
+        <Stepper label='Response Variation' floatingPoint min={0} max={1} step={0.1} pageSteps={2} value={this.state.temperature} onValueChange={updateSliderState} />
+        <br/>
+        <DropdownSelect label='Sheet' kind='line' onChange={updateTextState} stateprop='selectedWorksheet' value={selectedWorksheet}>
            { items }
         </DropdownSelect>
         <br/>

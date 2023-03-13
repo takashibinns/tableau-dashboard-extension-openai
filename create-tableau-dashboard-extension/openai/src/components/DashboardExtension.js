@@ -9,11 +9,13 @@ import './DashboardExtension.css';
 
 //  Preview linting errors
 /* global tableau */
-const website_path = process.env.REACT_APP_PATH;
+
+const website_path = process.env.REACT_APP_PATH ? process.env.REACT_APP_PATH : '';
 
 //  OpenAI constants
 const openai_defaults = {
   prompt: 'i want you to be an analyst and look at this data set to help me understand areas which need improvement. Also suggest to me quick win strategies for those areas',
+  temperature: 0,
   logo: `${website_path}/assets/openai.png`,
   name: 'OpenAI',
   fullname: 'ChatGPT Advisor for Tableau',
@@ -107,7 +109,7 @@ const getOpenAImoderation = async (openai_key, openai_org_id, prompt) => {
 }
 
 //  Create the prompt text for OpenAI
-const createOpenAiModel = (message, tableauData) => {
+const createOpenAiModel = (message, tableauData, settings) => {
 
   /**********************************************************/
   /*  Create a dataframe from the Tableau DataTable object  */
@@ -147,7 +149,7 @@ const createOpenAiModel = (message, tableauData) => {
     "model": "text-davinci-003",
     "prompt": `${message}. data set is - ${data}`,
     "max_tokens": 500,
-    "temperature": 0.9
+    "temperature": settings.temperature ? settings.temperature : openai_defaults.temperature
   }
   return payload
 }
@@ -315,6 +317,7 @@ export class DashboardExtension extends React.Component {
         openai_org_id: settings.openai_org_id,
         selectedWorksheet: selectedWorksheet,
         worksheets: TableauHelper.getWorksheets(),
+        temperature: settings.temperature,
         waitingForOpenAI: true,
         messages: [message1]
       }, async () => {
@@ -342,7 +345,7 @@ export class DashboardExtension extends React.Component {
         } else {
 
           //  Content is OK, generate the payload for OpenAI
-          const openai_payload = createOpenAiModel(openai_defaults.prompt, rawData);
+          const openai_payload = createOpenAiModel(openai_defaults.prompt, rawData, thisComponent.state);
 
           //  Get the initial message for this worksheet's data
           const openai_data = await getOpenAIdata(settings.openai_key, settings.openai_org_id, openai_payload);
@@ -413,7 +416,7 @@ export class DashboardExtension extends React.Component {
       } else {
 
         //  Content is OK, generate the payload for OpenAI
-        const openai_payload = createOpenAiModel(newMessage, thisComponent.state.dataTable);
+        const openai_payload = createOpenAiModel(newMessage, thisComponent.state.dataTable, thisComponent.state);
 
         //  Get the initial message for this worksheet's data
         const openai_data = await getOpenAIdata(thisComponent.state.openai_key, thisComponent.state.openai_org_id, openai_payload);
