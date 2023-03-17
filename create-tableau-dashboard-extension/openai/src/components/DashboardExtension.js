@@ -17,12 +17,13 @@ const openai_defaults = {
   prompt: 'i want you to be an analyst and look at this data set to help me understand areas which need improvement. Also suggest to me quick win strategies for those areas',
   temperature: 0,
   logo: `${website_path}/assets/openai.png`,
-  name: 'OpenAI',
+  name: 'assistant',
   fullname: 'ChatGPT Advisor for Tableau',
   info: 'Powered by OpenAI',
   infoLink: 'https://platform.openai.com/docs/introduction',
   disclaimer: 'By using this tool, you are interacting with an AI system.  This chatbox is simulating the experience of talking to your data',
-  moderationViolation: "Sorry, I can't accept your question because it was flagged as a Moderation violation for the following categories"
+  moderationViolation: "Sorry, I can't accept your question because it was flagged as a Moderation violation for the following categories",
+  useChatCompletions: true
 }
 //  Tableay constants
 const tableau_defaults = {
@@ -109,7 +110,71 @@ const getOpenAImoderation = async (openai_key, openai_org_id, prompt) => {
 }
 
 //  Create the prompt text for OpenAI
-const createOpenAiModel = (message, tableauData, settings) => {
+const createOpenAiModelChat = (messages, tableauData, settings) => {
+
+  /**********************************************************/
+  /*  Create a dataframe from the Tableau DataTable object  */
+  /**********************************************************/
+  let data = [];
+
+  //  The first row is table headers
+  let headerRow = Object.keys(tableauData.columns).map( key => { return tableauData.columns[key].fieldName; } ).join(",");
+  data.push(headerRow)
+
+  //  Append all other rows (data values)
+  tableauData.data.forEach( row => {
+    //  Create a formatted array based on the Tableau data values
+    let rowArray = [];
+    row.forEach( cell => {
+      if (typeof cell.nativeValue === "number") {
+        //  For numeric values, round to either 0 decimal place (for any values>1) or 2 decimal places (for values<=1)
+        rowArray.push(parseFloat(cell.nativeValue).toFixed(cell.nativeValue>1 ? 0 : 2));
+      } else if (Object.prototype.toString.call(cell.nativeValue) === "[object Date]") {
+        //  For date objects, format them to be as minimal as possible
+        rowArray.push(new Intl.DateTimeFormat('default').format(cell.nativeValue));
+      } else {
+        //  For all other data types, just insert the value
+        rowArray.push(cell.nativeValue)
+      }
+    })
+    //  Save this formatted row to our data array
+    data.push(rowArray.join(","));
+  })
+
+  /**********************************************************/
+  /*  Create the OpenAI payload                             */
+  /**********************************************************/
+
+  //  Convert this component's message history into a structure required by OpenAI
+  let gptMessages = messages.map( (message,index) => {
+    return {
+      "role": message.sender,
+      "content": message.message
+      //"content": index === 0 ? `${message.message}. data set is - ${data}` : message.message
+    }
+  })
+
+  //  Always include the summary data from Tableau as a user message
+  const initialMessage = {
+    "role": "user",
+    "content": `Use the following data to help answer follow up questions: ${data}`
+  }
+  gptMessages.unshift(initialMessage);
+
+
+  //  Return an object for OpenAI
+  const payload = {
+    "model": "gpt-3.5-turbo",
+    "messages": gptMessages,
+    "max_tokens": 500,
+    "temperature": settings.temperature ? settings.temperature : openai_defaults.temperature
+  }
+
+  return payload
+}
+
+//  Create the prompt text for OpenAI
+const createOpenAiModelCompletions = (message, tableauData, settings) => {
 
   /**********************************************************/
   /*  Create a dataframe from the Tableau DataTable object  */
@@ -151,6 +216,7 @@ const createOpenAiModel = (message, tableauData, settings) => {
     "max_tokens": 500,
     "temperature": settings.temperature ? settings.temperature : openai_defaults.temperature
   }
+
   return payload
 }
 
@@ -173,7 +239,7 @@ const getOpenAIdata = async (openai_key, openai_org_id, payload) => {
   }
 
   //  Define the API endpoint
-  const openai_url = 'https://api.openai.com/v1/completions';
+  const openai_url = `https://api.openai.com/v1/${openai_defaults.useChatCompletions ? 'chat/' : '' }completions`;
 
   //  Make the next API call, to OpenAI
   const config = {
@@ -201,7 +267,11 @@ const getOpenAIdata = async (openai_key, openai_org_id, payload) => {
     response.message = openai_data.error.message;
     return response;
   } else {
-    response.message = openai_data.choices[0].text.trim();
+    if (openai_defaults.useChatCompletions) {
+      response.message = openai_data.choices[0].message.content.trim();
+    } else {
+      response.message = openai_data.choices[0].text.trim();
+    }
   }
 
   //  Return the text from OpenAI
@@ -305,7 +375,7 @@ export class DashboardExtension extends React.Component {
         type: 'text',
         position: 'single',
         direction: 'outgoing',
-        sender: 'User',
+        sender: 'user',
         className: tableau_defaults.userMessageClassname,
         sentTime: TableauHelper.formatDate(new Date()),
         message: settings.defaultQuestion,
@@ -345,7 +415,12 @@ export class DashboardExtension extends React.Component {
         } else {
 
           //  Content is OK, generate the payload for OpenAI
-          const openai_payload = createOpenAiModel(openai_defaults.prompt, rawData, thisComponent.state);
+          let openai_payload;
+          if (openai_defaults.useChatCompletions){
+            openai_payload = createOpenAiModelChat(newMessages, rawData, thisComponent.state);
+          } else {
+            openai_payload = createOpenAiModelCompletions(newMessages, rawData, thisComponent.state);
+          }
 
           //  Get the initial message for this worksheet's data
           const openai_data = await getOpenAIdata(settings.openai_key, settings.openai_org_id, openai_payload);
@@ -384,7 +459,7 @@ export class DashboardExtension extends React.Component {
       type: 'text',
       position: 'single',
       direction: 'outgoing',
-      sender: 'User',
+      sender: 'user',
       className: tableau_defaults.userMessageClassname,
       sentTime: TableauHelper.formatDate(new Date()),
       message: newMessage
@@ -416,7 +491,12 @@ export class DashboardExtension extends React.Component {
       } else {
 
         //  Content is OK, generate the payload for OpenAI
-        const openai_payload = createOpenAiModel(newMessage, thisComponent.state.dataTable, thisComponent.state);
+        let openai_payload;
+        if (openai_defaults.useChatCompletions){
+          openai_payload = createOpenAiModelChat(newMessages, thisComponent.state.dataTable, thisComponent.state);
+        } else {
+          openai_payload = createOpenAiModelCompletions(newMessage, thisComponent.state.dataTable, thisComponent.state);
+        }
 
         //  Get the initial message for this worksheet's data
         const openai_data = await getOpenAIdata(thisComponent.state.openai_key, thisComponent.state.openai_org_id, openai_payload);
