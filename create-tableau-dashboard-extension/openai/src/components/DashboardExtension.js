@@ -128,7 +128,8 @@ const createOpenAiModelChat = (messages, tableauData, settings) => {
     row.forEach( cell => {
       if (typeof cell.nativeValue === "number") {
         //  For numeric values, round to either 0 decimal place (for any values>1) or 2 decimal places (for values<=1)
-        rowArray.push(parseFloat(cell.nativeValue).toFixed(cell.nativeValue>1 ? 0 : 2));
+        const isSmallNumber = Math.abs(parseFloat(cell.nativeValue)) < 1;
+        rowArray.push(parseFloat(cell.nativeValue).toFixed(isSmallNumber ? 2 : 0));
       } else if (Object.prototype.toString.call(cell.nativeValue) === "[object Date]") {
         //  For date objects, format them to be as minimal as possible
         rowArray.push(new Intl.DateTimeFormat('default').format(cell.nativeValue));
