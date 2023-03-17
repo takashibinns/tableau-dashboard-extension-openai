@@ -265,7 +265,16 @@ const getOpenAIdata = async (openai_key, openai_org_id, payload) => {
   if (openai_data.error) {
     console.error(openai_data.error);
     response.error = openai_data.error;
-    response.message = openai_data.error.message;
+    
+    //  Give more info, when too many tokens provided
+    if (openai_data.error.code === 'context_length_exceeded'){
+      response.message = `The dataset from Tableau was too large for OpenAI's APIs to consume.  Please use a smaller dataset or filter your data first.  This could also be caused by having lots of text-heavy data.
+      
+      ${openai_data.error.message}`;
+    } else {
+      //  Just spit out the error message from OpenAI
+      response.message = openai_data.error.message;
+    }
     return response;
   } else {
     if (openai_defaults.useChatCompletions) {
@@ -432,7 +441,7 @@ export class DashboardExtension extends React.Component {
             position: 'single',
             direction: 'incoming',
             sender: openai_defaults.name,
-            className: tableau_defaults.goodMessageClassname,
+            className: openai_data.error ? tableau_defaults.badMessageClassname : tableau_defaults.goodMessageClassname,
             sentTime: TableauHelper.formatDate(new Date()),
             message: openai_data.message
           })
@@ -508,7 +517,7 @@ export class DashboardExtension extends React.Component {
           position: 'single',
           direction: 'incoming',
           sender: openai_defaults.name,
-          className: tableau_defaults.goodMessageClassname,
+          className: openai_data.error ? tableau_defaults.badMessageClassname : tableau_defaults.goodMessageClassname,
           sentTime: TableauHelper.formatDate(new Date()),
           message: openai_data.message,
         })
