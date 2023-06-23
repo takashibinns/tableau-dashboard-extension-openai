@@ -1,6 +1,6 @@
 # Tableau Dashboard Extension integratino with OpenAI's ChatGPT 
 ![Chatbot Screenrecording](create-tableau-dashboard-extension/screenshots/animation.gif)
-This dashboard extension provides a chat window for users to ask questions about the data in their dashboard.  When it first loads it takes data from the selected sheet, and passes it to OpenAI's [Completion](https://platform.openai.com/docs/guides/completion) API.  We also use a default question, so that the chatbot can give us some insights automatically.  Once this first question has been answered, the user can ask additional questions.  The chatbot will take into account the summary data from that sheet as well as public data, in order to provide an answer.
+This dashboard extension provides a chat window for users to ask questions about the data in their dashboard.  When it first loads it takes data from the selected sheet, and passes it to OpenAI's [Chat](https://platform.openai.com/docs/guides/chat) API.  We also use a default question, so that the chatbot can give us some insights automatically.  Once this first question has been answered, the user can ask additional questions.  The chatbot will take into account the summary data from that sheet as well as public data, in order to provide an answer.
 
 **Note:** This dashboard extension sends your data to OpenAI in order to generate the text responses.  Only use this extension with non-sensitive data that is allowed to be sent to a 3rd party.
 
@@ -42,13 +42,14 @@ Now that you have your static files, upload them to your S3 bucket and you shoul
 
 ## Known Issues
 * Currently, only questions in english have been tested
-* If you've tried [ChatGPT](https://openai.com/blog/chatgpt), you will be accustomed to working within a *session*.  You ask an initial question and then can ask follow ups without losing context.  Since ChatGPT's API is not publically available yet, we are using the [Completion](https://platform.openai.com/docs/api-reference/completions) endpoint instead.  This works pretty well, but it does not have a concept of sessions or history.  This means we have to pass the summary data from the sheet with each API call.  
+* If you've tried [ChatGPT](https://openai.com/blog/chatgpt), you will be accustomed to working within a *session*.  This extension works the same way, and uses the [Chat](https://platform.openai.com/docs/api-reference/chat) endpoint.  If you'd like to use the [Completion](https://platform.openai.com/docs/api-reference/completions) endpoint instead, there's a flag in the DashboardExtension.js file.  Look for the variable named ```openai_default``` which has a property named ```useChatCompletions```, and set this to ```false``` in order to use the Completion endpoint.
 * Data volumes: OpenAI's public API only allows prompts of a certain size.  This extension uses the `text-davinci-003` model, which allows up to 4000 [tokens](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them).  This means the summary data we send to OpenAI must be relatively small in size.  The maximum # rows will vary, depending on number of columns and how much long text is within each column.
 ## References
 
 ### OpenAI
 This dashboard extension leverage OpenAI's public REST API to generate the responses from the chatbot.  The documentation on OpenAI's APIs can be found here:
 https://platform.openai.com/docs/introduction
+
 ### ChatScope
 In order to display the responses in a format that looks like a chatbox, this web app leverages ChatScope's Chat UI Kit React.  The documentation on this can be found here:
 https://chatscope.io/storybook/react/?path=/story/documentation-introduction--page
@@ -60,6 +61,7 @@ https://www.npmjs.com/package/simple-react-modal
 ### Tableau Dashboard Extension
 This project creates a Tableau Dashboard Extension, which allows web apps to run within the context of a Tableau dashboard.  More information about building dashboard extensions for Tableau can be found here:
 https://tableau.github.io/extensions-api/
+
 ### create-tableau-dashboard-extension
 If you are wondering why the directory structure has a folder named `create-tableau-dashboard-extension`, it's because this web app was built using an npx command.  This one command builds the scaffolding for a tableau dashboard extension, making it much faster to develop the extension.  More info can be found here:
-https://github.com/takashibinns/create-tableau-dashboard-extension
+[https://github.com/tableau/create-tableau-dashboard-extension](https://github.com/tableau/create-tableau-dashboard-extension)
